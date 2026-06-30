@@ -114,8 +114,8 @@ fun MainAppScreen() {
     }
 
     // App state tracked from WebView
-    var currentUrl by remember { mutableStateOf("https://bacakomik.pics") }
-    var currentTitle by remember { mutableStateOf("Bacakomik - Baca Komik Online") }
+    var currentUrl by remember { mutableStateOf("https://komiktap.info") }
+    var currentTitle by remember { mutableStateOf("Komiktap - Baca Komik Online") }
     var webProgress by remember { mutableStateOf(0) }
     var isWebLoading by remember { mutableStateOf(false) }
     var canGoBack by remember { mutableStateOf(false) }
@@ -130,6 +130,7 @@ fun MainAppScreen() {
     var historyList by remember { mutableStateOf(comicPrefs.getHistory()) }
     var isCurrentlyBookmarked by remember { mutableStateOf(comicPrefs.isBookmarked(currentUrl)) }
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showVpnNoticeDialog by remember { mutableStateOf(!comicPrefs.hasShownVpnNotice()) }
 
     // Handle Android system back button to navigate WebView back
     BackHandler(enabled = currentTab == AppTab.BROWSER && canGoBack) {
@@ -161,8 +162,8 @@ fun MainAppScreen() {
                 url?.let { finishedUrl ->
                     currentUrl = finishedUrl
                     isCurrentlyBookmarked = comicPrefs.isBookmarked(finishedUrl)
-                    val title = view?.title ?: "Bacakomik"
-                    currentTitle = if (title.contains("bacakomik", ignoreCase = true)) title else "$title - Bacakomik"
+                    val title = view?.title ?: "Komiktap"
+                    currentTitle = if (title.contains("komiktap", ignoreCase = true)) title else "$title - Komiktap"
                     
                     // Automatically add loaded chapter/comic to History
                     comicPrefs.addHistory(title, finishedUrl)
@@ -174,8 +175,8 @@ fun MainAppScreen() {
 
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 if (url == null) return false
-                // Keep load inside WebView if it's Bacakomik, else launch external activity for safety
-                return if (url.contains("bacakomik", ignoreCase = true) || url.startsWith("http")) {
+                // Keep load inside WebView if it's Komiktap, else launch external activity for safety
+                return if (url.contains("komiktap.info", ignoreCase = true) || url.startsWith("http")) {
                     false
                 } else {
                     try {
@@ -199,13 +200,13 @@ fun MainAppScreen() {
 
             override fun onReceivedTitle(view: WebView?, title: String?) {
                 title?.let {
-                    currentTitle = if (it.contains("bacakomik", ignoreCase = true)) it else "$it - Bacakomik"
+                    currentTitle = if (it.contains("komiktap", ignoreCase = true)) it else "$it - Komiktap"
                 }
             }
         }
 
         // Initial load
-        webView.loadUrl("https://bacakomik.pics")
+        webView.loadUrl("https://komiktap.info")
     }
 
     Scaffold(
@@ -348,7 +349,7 @@ fun MainAppScreen() {
                             bookmarksList = comicPrefs.getBookmarks()
                         },
                         onHomeTrigger = {
-                            webView.loadUrl("https://bacakomik.pics")
+                            webView.loadUrl("https://komiktap.info")
                         },
                         onMenuClick = {
                             showBottomSheet = true
@@ -411,7 +412,7 @@ fun MainAppScreen() {
                             Toast.makeText(context, "Cache & Data browser berhasil dibersihkan", Toast.LENGTH_SHORT).show()
                         },
                         onResetHome = {
-                            webView.loadUrl("https://bacakomik.pics")
+                            webView.loadUrl("https://komiktap.info")
                             currentTab = AppTab.BROWSER
                         }
                     )
@@ -597,6 +598,50 @@ fun MainAppScreen() {
             }
         }
     }
+
+    // VPN Warning Dialog
+    if (showVpnNoticeDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                comicPrefs.setVpnNoticeShown()
+                showVpnNoticeDialog = false 
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "VPN Required",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Koneksi VPN Diperlukan",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "Aplikasi ini memuat situs komiktap.info untuk membaca komik. Agar halaman dapat terbuka dengan lancar, pastikan Anda menggunakan aplikasi VPN yang aktif di ponsel Anda.\n\nTanpa VPN, halaman web mungkin tidak akan bisa terbuka (blank atau error).",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        comicPrefs.setVpnNoticeShown()
+                        showVpnNoticeDialog = false
+                    },
+                    modifier = Modifier.testTag("vpn_confirm_button")
+                ) {
+                    Text("Saya Mengerti")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -625,7 +670,7 @@ fun BrowserScreen(
             Box(modifier = Modifier.weight(1f)) {
                 AndroidView(
                     factory = { webView },
-                    modifier = Modifier.fillMaxSize().testTag("webview_bacakomik")
+                    modifier = Modifier.fillMaxSize().testTag("webview_komiktap")
                 )
 
                 // Thin progress indicator overlaid at the top of the WebView so it doesn't push the layout down
@@ -758,7 +803,7 @@ fun BrowserScreen(
                         IconButton(
                             onClick = {
                                 if (searchQuery.isNotBlank()) {
-                                    val searchUrl = "https://bacakomik.pics/?s=${Uri.encode(searchQuery)}"
+                                    val searchUrl = "https://komiktap.info/?s=${Uri.encode(searchQuery)}"
                                     webView.loadUrl(searchUrl)
                                     onSearchExpandedChange(false)
                                     keyboardController?.hide()
@@ -771,7 +816,7 @@ fun BrowserScreen(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = {
                         if (searchQuery.isNotBlank()) {
-                            val searchUrl = "https://bacakomik.pics/?s=${Uri.encode(searchQuery)}"
+                            val searchUrl = "https://komiktap.info/?s=${Uri.encode(searchQuery)}"
                             webView.loadUrl(searchUrl)
                             onSearchExpandedChange(false)
                             keyboardController?.hide()
@@ -1125,7 +1170,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Memaksa web bacakomik dimuat versi komputer",
+                            text = "Memaksa web komiktap dimuat versi komputer",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
@@ -1161,7 +1206,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Muat ulang browser langsung ke halaman awal bacakomik.pics",
+                            text = "Muat ulang browser langsung ke halaman awal komiktap.info",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
@@ -1221,7 +1266,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Aplikasi ini didesain khusus sebagai browser premium bacakomik.pics yang menyembunyikan alamat link agar membaca komik lebih lega dan terfokus pada konten.",
+                    text = "Aplikasi ini didesain khusus sebagai browser premium komiktap.info yang menyembunyikan alamat link agar membaca komik lebih lega dan terfokus pada konten.",
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
@@ -1260,8 +1305,8 @@ object AdBlocker {
 
     fun isAd(url: String): Boolean {
         val lowerUrl = url.lowercase(Locale.getDefault())
-        // Never block the main bacakomik core pages
-        if (lowerUrl.contains("bacakomik.pics") && !lowerUrl.contains("/ad/") && !lowerUrl.contains("/ads/")) {
+        // Never block the main komiktap core pages
+        if (lowerUrl.contains("komiktap.info") && !lowerUrl.contains("/ad/") && !lowerUrl.contains("/ads/")) {
             return false
         }
         

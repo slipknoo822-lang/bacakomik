@@ -1,6 +1,6 @@
 {
   "name": "Bacakomik",
-  "description": "Sleek and professional manga/comic browser and viewer for bacakomik.pics, featuring bookmarking, search assistants, and history tools.",
+  "description": "Sleek and professional manga/comic browser and viewer for komiktap.info, featuring bookmarking, search assistants, and history tools.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

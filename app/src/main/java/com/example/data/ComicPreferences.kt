@@ -52,6 +52,14 @@ class ComicPreferences(context: Context) {
         prefs.edit().putString("history", "[]").apply()
     }
 
+    fun hasShownVpnNotice(): Boolean {
+        return prefs.getBoolean("has_shown_vpn_notice", false)
+    }
+
+    fun setVpnNoticeShown() {
+        prefs.edit().putBoolean("has_shown_vpn_notice", true).apply()
+    }
+
     private fun parseJsonList(jsonStr: String): List<ComicItem> {
         val list = mutableListOf<ComicItem>()
         try {
