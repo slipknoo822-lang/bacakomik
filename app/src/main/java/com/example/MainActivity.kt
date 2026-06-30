@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun MainAppScreen() {
@@ -128,6 +129,7 @@ fun MainAppScreen() {
     var bookmarksList by remember { mutableStateOf(comicPrefs.getBookmarks()) }
     var historyList by remember { mutableStateOf(comicPrefs.getHistory()) }
     var isCurrentlyBookmarked by remember { mutableStateOf(comicPrefs.isBookmarked(currentUrl)) }
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     // Handle Android system back button to navigate WebView back
     BackHandler(enabled = currentTab == AppTab.BROWSER && canGoBack) {
@@ -209,303 +211,117 @@ fun MainAppScreen() {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            Column {
-                // Top Custom App Bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .height(64.dp)
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        // Logo / Action
-                        IconButton(
-                            onClick = {
-                                webView.loadUrl("https://bacakomik.pics")
-                                currentTab = AppTab.BROWSER
-                            },
-                            modifier = Modifier.testTag("app_logo_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MenuBook,
-                                contentDescription = "Menu Book",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Column {
-                            Text(
-                                text = "Bacakomik",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            Text(
-                                text = "Live Reader Mode",
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                    }
-
-                    // Top Action Controls
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = { isSearchExpanded = !isSearchExpanded },
-                            modifier = Modifier.testTag("search_toggle_button")
-                        ) {
-                            Icon(
-                                imageVector = if (isSearchExpanded) Icons.Default.Close else Icons.Default.Search,
-                                contentDescription = "Cari Komik",
-                                tint = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-
-                        // Bookmark / Favorite Quick Trigger
-                        if (currentTab == AppTab.BROWSER) {
-                            IconButton(
-                                onClick = {
-                                    if (isCurrentlyBookmarked) {
-                                        comicPrefs.removeBookmark(currentUrl)
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Dihapus dari Favorit")
-                                        }
-                                    } else {
-                                        comicPrefs.addBookmark(currentTitle, currentUrl)
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Disimpan ke Favorit!")
-                                        }
-                                    }
-                                    isCurrentlyBookmarked = !isCurrentlyBookmarked
-                                    bookmarksList = comicPrefs.getBookmarks()
-                                },
-                                modifier = Modifier.testTag("bookmark_quick_button")
-                            ) {
-                                Icon(
-                                    imageVector = if (isCurrentlyBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                                    contentDescription = "Simpan Favorit",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        // Custom Profile Avatar initials
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                                .clickable {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Bacakomik Premium Client Active")
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "BK",
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-
-                // Interactive Quick Search Bar Expansion
-                AnimatedVisibility(
-                    visible = isSearchExpanded,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    val keyboardController = LocalSoftwareKeyboardController.current
-                    Box(
+        bottomBar = {
+            if (currentTab != AppTab.BROWSER) {
+                Column {
+                    // Bottom Tab Navigation Bar matching Professional Polish layout specs
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = { Text("Cari manga / komik...", fontSize = 14.sp) },
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp)
-                                .testTag("search_input_field"),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                            .height(80.dp)
+                            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
                             ),
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = {
-                                        if (searchQuery.isNotBlank()) {
-                                            val searchUrl = "https://bacakomik.pics/?s=${Uri.encode(searchQuery)}"
-                                            webView.loadUrl(searchUrl)
-                                            currentTab = AppTab.BROWSER
-                                            isSearchExpanded = false
-                                            keyboardController?.hide()
-                                        }
-                                    }
-                                ) {
-                                    Icon(Icons.Default.ArrowForward, contentDescription = "Search Go")
-                                }
+                        tonalElevation = 8.dp
+                    ) {
+                        NavigationBarItem(
+                            selected = currentTab == AppTab.BROWSER,
+                            onClick = { currentTab = AppTab.BROWSER },
+                            icon = {
+                                Icon(
+                                    imageVector = if (currentTab == AppTab.BROWSER) Icons.Default.Explore else Icons.Outlined.Explore,
+                                    contentDescription = "Explore"
+                                )
                             },
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = {
-                                if (searchQuery.isNotBlank()) {
-                                    val searchUrl = "https://bacakomik.pics/?s=${Uri.encode(searchQuery)}"
-                                    webView.loadUrl(searchUrl)
-                                    currentTab = AppTab.BROWSER
-                                    isSearchExpanded = false
-                                    keyboardController?.hide()
-                                }
-                            })
+                            label = { Text("Browser", fontSize = 11.sp) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            ),
+                            modifier = Modifier.testTag("tab_browser")
+                        )
+                        
+                        NavigationBarItem(
+                            selected = currentTab == AppTab.BOOKMARKS,
+                            onClick = {
+                                bookmarksList = comicPrefs.getBookmarks()
+                                currentTab = AppTab.BOOKMARKS
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = if (currentTab == AppTab.BOOKMARKS) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                                    contentDescription = "Bookmarks"
+                                )
+                            },
+                            label = { Text("Favorit", fontSize = 11.sp) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            ),
+                            modifier = Modifier.testTag("tab_favorit")
+                        )
+
+                        NavigationBarItem(
+                            selected = currentTab == AppTab.HISTORY,
+                            onClick = {
+                                historyList = comicPrefs.getHistory()
+                                currentTab = AppTab.HISTORY
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = if (currentTab == AppTab.HISTORY) Icons.Default.History else Icons.Outlined.History,
+                                    contentDescription = "History"
+                                )
+                            },
+                            label = { Text("Riwayat", fontSize = 11.sp) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            ),
+                            modifier = Modifier.testTag("tab_history")
+                        )
+
+                        NavigationBarItem(
+                            selected = currentTab == AppTab.SETTINGS,
+                            onClick = { currentTab = AppTab.SETTINGS },
+                            icon = {
+                                Icon(
+                                    imageVector = if (currentTab == AppTab.SETTINGS) Icons.Default.Settings else Icons.Outlined.Settings,
+                                    contentDescription = "Settings"
+                                )
+                            },
+                            label = { Text("Pengaturan", fontSize = 11.sp) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            ),
+                            modifier = Modifier.testTag("tab_settings")
                         )
                     }
-                }
 
-                // Horizontal loading progress indicator
-                if (isWebLoading && currentTab == AppTab.BROWSER) {
-                    LinearProgressIndicator(
-                        progress = { webProgress / 100f },
+                    // Adaptive system bottom bar padding
+                    Spacer(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(2.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.Transparent
+                            .navigationBarsPadding()
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     )
                 }
-            }
-        },
-        bottomBar = {
-            Column {
-                // Bottom Tab Navigation Bar matching Professional Polish layout specs
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                        .border(
-                            1.dp,
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-                        ),
-                    tonalElevation = 8.dp
-                ) {
-                    NavigationBarItem(
-                        selected = currentTab == AppTab.BROWSER,
-                        onClick = { currentTab = AppTab.BROWSER },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentTab == AppTab.BROWSER) Icons.Default.Explore else Icons.Outlined.Explore,
-                                contentDescription = "Explore"
-                            )
-                        },
-                        label = { Text("Browser", fontSize = 11.sp) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        ),
-                        modifier = Modifier.testTag("tab_browser")
-                    )
-                    
-                    NavigationBarItem(
-                        selected = currentTab == AppTab.BOOKMARKS,
-                        onClick = {
-                            bookmarksList = comicPrefs.getBookmarks()
-                            currentTab = AppTab.BOOKMARKS
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentTab == AppTab.BOOKMARKS) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
-                                contentDescription = "Bookmarks"
-                            )
-                        },
-                        label = { Text("Favorit", fontSize = 11.sp) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        ),
-                        modifier = Modifier.testTag("tab_favorit")
-                    )
-
-                    NavigationBarItem(
-                        selected = currentTab == AppTab.HISTORY,
-                        onClick = {
-                            historyList = comicPrefs.getHistory()
-                            currentTab = AppTab.HISTORY
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentTab == AppTab.HISTORY) Icons.Default.History else Icons.Outlined.History,
-                                contentDescription = "History"
-                            )
-                        },
-                        label = { Text("Riwayat", fontSize = 11.sp) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        ),
-                        modifier = Modifier.testTag("tab_history")
-                    )
-
-                    NavigationBarItem(
-                        selected = currentTab == AppTab.SETTINGS,
-                        onClick = { currentTab = AppTab.SETTINGS },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentTab == AppTab.SETTINGS) Icons.Default.Settings else Icons.Outlined.Settings,
-                                contentDescription = "Settings"
-                            )
-                        },
-                        label = { Text("Pengaturan", fontSize = 11.sp) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        ),
-                        modifier = Modifier.testTag("tab_settings")
-                    )
-                }
-
-                // Adaptive system bottom bar padding
-                Spacer(
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                )
             }
         }
     ) { innerPadding ->
-        // Premium Main floating-style card container with 24.dp / 3xl rounded borders
         Box(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(horizontal = 8.dp, vertical = 4.dp)
                 .fillMaxSize()
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.background)
         ) {
             when (currentTab) {
                 AppTab.BROWSER -> {
@@ -515,20 +331,34 @@ fun MainAppScreen() {
                         currentTitle = currentTitle,
                         canGoBack = canGoBack,
                         canGoForward = canGoForward,
-                        isDesktopMode = isDesktopMode,
-                        onDesktopModeToggle = {
-                            isDesktopMode = !isDesktopMode
-                            val currentUA = webView.settings.userAgentString
-                            if (isDesktopMode) {
-                                webView.settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                        isCurrentlyBookmarked = isCurrentlyBookmarked,
+                        onBookmarkToggle = {
+                            if (isCurrentlyBookmarked) {
+                                comicPrefs.removeBookmark(currentUrl)
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Dihapus dari Favorit")
+                                }
                             } else {
-                                webView.settings.userAgentString = null // Default mobile UserAgent
+                                comicPrefs.addBookmark(currentTitle, currentUrl)
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Disimpan ke Favorit!")
+                                }
                             }
-                            webView.reload()
+                            isCurrentlyBookmarked = !isCurrentlyBookmarked
+                            bookmarksList = comicPrefs.getBookmarks()
                         },
                         onHomeTrigger = {
                             webView.loadUrl("https://bacakomik.pics")
-                        }
+                        },
+                        onMenuClick = {
+                            showBottomSheet = true
+                        },
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        isSearchExpanded = isSearchExpanded,
+                        onSearchExpandedChange = { isSearchExpanded = it },
+                        isWebLoading = isWebLoading,
+                        webProgress = webProgress
                     )
                 }
                 AppTab.BOOKMARKS -> {
@@ -589,6 +419,184 @@ fun MainAppScreen() {
             }
         }
     }
+
+    // Modal Bottom Sheet Navigation & Controls
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = rememberModalBottomSheetState(),
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "Menu Navigasi Bacakomik",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 16.dp, start = 8.dp)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    // Refresh Action
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clickable {
+                                webView.reload()
+                                showBottomSheet = false
+                            }
+                            .padding(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Muat Ulang",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Muat Ulang", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    }
+
+                    // Desktop Toggle Action
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clickable {
+                                isDesktopMode = !isDesktopMode
+                                if (isDesktopMode) {
+                                    webView.settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                                } else {
+                                    webView.settings.userAgentString = null
+                                }
+                                webView.reload()
+                                showBottomSheet = false
+                            }
+                            .padding(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(if (isDesktopMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isDesktopMode) Icons.Default.Laptop else Icons.Default.PhoneAndroid,
+                                contentDescription = "Mode Desktop",
+                                tint = if (isDesktopMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(if (isDesktopMode) "Mode HP" else "Mode Desktop", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    }
+
+                    // Share Action
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clickable {
+                                try {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, currentTitle)
+                                        putExtra(Intent.EXTRA_TEXT, currentUrl)
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "Bagikan Komik"))
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Gagal membagikan", Toast.LENGTH_SHORT).show()
+                                }
+                                showBottomSheet = false
+                            }
+                            .padding(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Bagikan",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Bagikan", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                ListItem(
+                    headlineContent = { Text("Komik Favorit Saya", fontWeight = FontWeight.SemiBold) },
+                    supportingContent = { Text("Kumpulan komik yang kamu simpan") },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Bookmark,
+                            contentDescription = "Favorit",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        bookmarksList = comicPrefs.getBookmarks()
+                        currentTab = AppTab.BOOKMARKS
+                        showBottomSheet = false
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Riwayat Membaca", fontWeight = FontWeight.SemiBold) },
+                    supportingContent = { Text("Daftar halaman yang baru kamu kunjungi") },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "Riwayat",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        historyList = comicPrefs.getHistory()
+                        currentTab = AppTab.HISTORY
+                        showBottomSheet = false
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Pengaturan Aplikasi", fontWeight = FontWeight.SemiBold) },
+                    supportingContent = { Text("Konfigurasi AdBlock, Cache, dan data browser") },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Pengaturan",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        currentTab = AppTab.SETTINGS
+                        showBottomSheet = false
+                    }
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -598,107 +606,177 @@ fun BrowserScreen(
     currentTitle: String,
     canGoBack: Boolean,
     canGoForward: Boolean,
-    isDesktopMode: Boolean,
-    onDesktopModeToggle: () -> Unit,
-    onHomeTrigger: () -> Unit
+    isCurrentlyBookmarked: Boolean,
+    onBookmarkToggle: () -> Unit,
+    onHomeTrigger: () -> Unit,
+    onMenuClick: () -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    isSearchExpanded: Boolean,
+    onSearchExpandedChange: (Boolean) -> Unit,
+    isWebLoading: Boolean,
+    webProgress: Int
 ) {
     val context = LocalContext.current
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Main Web View display
-        Box(modifier = Modifier.weight(1f)) {
-            AndroidView(
-                factory = { webView },
-                modifier = Modifier.fillMaxSize().testTag("webview_bacakomik")
-            )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Main Web View display
+            Box(modifier = Modifier.weight(1f)) {
+                AndroidView(
+                    factory = { webView },
+                    modifier = Modifier.fillMaxSize().testTag("webview_bacakomik")
+                )
+
+                // Thin progress indicator overlaid at the top of the WebView so it doesn't push the layout down
+                if (isWebLoading) {
+                    LinearProgressIndicator(
+                        progress = { webProgress / 100f },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.TopCenter)
+                            .height(3.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color.Transparent
+                    )
+                }
+            }
+
+            // Specialized Single Navigation Bar for Comic Reading Controls
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .navigationBarsPadding(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                IconButton(
+                    onClick = { if (canGoBack) webView.goBack() },
+                    enabled = canGoBack,
+                    modifier = Modifier.testTag("web_back_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Kembali",
+                        tint = if (canGoBack) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    )
+                }
+
+                IconButton(
+                    onClick = { if (canGoForward) webView.goForward() },
+                    enabled = canGoForward,
+                    modifier = Modifier.testTag("web_forward_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = "Maju",
+                        tint = if (canGoForward) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    )
+                }
+
+                IconButton(
+                    onClick = { onSearchExpandedChange(!isSearchExpanded) },
+                    modifier = Modifier.testTag("web_search_button")
+                ) {
+                    Icon(
+                        imageVector = if (isSearchExpanded) Icons.Default.Close else Icons.Default.Search,
+                        contentDescription = "Cari Komik",
+                        tint = if (isSearchExpanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                IconButton(
+                    onClick = onBookmarkToggle,
+                    modifier = Modifier.testTag("web_bookmark_button")
+                ) {
+                    Icon(
+                        imageVector = if (isCurrentlyBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                        contentDescription = "Simpan Favorit",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                IconButton(
+                    onClick = onHomeTrigger,
+                    modifier = Modifier.testTag("web_home_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = "Beranda Utama",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                IconButton(
+                    onClick = onMenuClick,
+                    modifier = Modifier.testTag("web_menu_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu Utama",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
         }
 
-        // Specialized Navigation Bar for Comic Reading Controls
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-        Row(
+        // Search Bar Overlay at the top of the screen (Floating overlay style, no top bar push)
+        AnimatedVisibility(
+            visible = isSearchExpanded,
+            enter = fadeIn(),
+            exit = fadeOut(),
             modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceAround
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            IconButton(
-                onClick = { if (canGoBack) webView.goBack() },
-                enabled = canGoBack,
-                modifier = Modifier.testTag("web_back_button")
+            val keyboardController = LocalSoftwareKeyboardController.current
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
             ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Kembali",
-                    tint = if (canGoBack) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                )
-            }
-
-            IconButton(
-                onClick = { if (canGoForward) webView.goForward() },
-                enabled = canGoForward,
-                modifier = Modifier.testTag("web_forward_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowForward,
-                    contentDescription = "Maju",
-                    tint = if (canGoForward) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                )
-            }
-
-            IconButton(
-                onClick = onHomeTrigger,
-                modifier = Modifier.testTag("web_home_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = "Beranda Utama",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            IconButton(
-                onClick = { webView.reload() },
-                modifier = Modifier.testTag("web_refresh_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Muat Ulang",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            IconButton(
-                onClick = onDesktopModeToggle,
-                modifier = Modifier.testTag("web_desktop_toggle")
-            ) {
-                Icon(
-                    imageVector = if (isDesktopMode) Icons.Default.Laptop else Icons.Default.PhoneAndroid,
-                    contentDescription = "Mode Tampilan",
-                    tint = if (isDesktopMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            IconButton(
-                onClick = {
-                    try {
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, currentTitle)
-                            putExtra(Intent.EXTRA_TEXT, currentUrl)
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    placeholder = { Text("Cari manga / komik...", fontSize = 14.sp) },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .testTag("search_input_field"),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent
+                    ),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                if (searchQuery.isNotBlank()) {
+                                    val searchUrl = "https://bacakomik.pics/?s=${Uri.encode(searchQuery)}"
+                                    webView.loadUrl(searchUrl)
+                                    onSearchExpandedChange(false)
+                                    keyboardController?.hide()
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.ArrowForward, contentDescription = "Search Go")
                         }
-                        context.startActivity(Intent.createChooser(shareIntent, "Bagikan Komik"))
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "Gagal membagikan link", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier.testTag("web_share_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Bagikan",
-                    tint = MaterialTheme.colorScheme.onSurface
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = {
+                        if (searchQuery.isNotBlank()) {
+                            val searchUrl = "https://bacakomik.pics/?s=${Uri.encode(searchQuery)}"
+                            webView.loadUrl(searchUrl)
+                            onSearchExpandedChange(false)
+                            keyboardController?.hide()
+                        }
+                    })
                 )
             }
         }
