@@ -1,0 +1,13 @@
+# Prevent Git from corrupting binary files by changing their line endings
+* text=auto
+
+# Explicitly declare binary files so they are preserved perfectly
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.keystore binary
+*.bin binary
