@@ -605,59 +605,6 @@ fun BrowserScreen(
     val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // WebView Header simulation (Hidden actual URL string, beautiful domain display)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                // Colored simulation buttons
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFEF5350)))
-                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFFFCA28)))
-                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF66BB6A)))
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                // Sanitized and beautified display of domain
-                val displayDomain = remember(currentUrl) {
-                    try {
-                        val host = URL(currentUrl).host
-                        if (host.startsWith("www.")) host.substring(4) else host
-                    } catch (e: Exception) {
-                        "bacakomik.pics"
-                    }
-                }
-                
-                Text(
-                    text = "https://$displayDomain/...",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Text(
-                text = "SECURE NODE",
-                fontSize = 9.sp,
-                color = Color(0xFF2E7D32),
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .border(1.dp, Color(0xFF2E7D32).copy(alpha = 0.3f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            )
-        }
-
         // Main Web View display
         Box(modifier = Modifier.weight(1f)) {
             AndroidView(
