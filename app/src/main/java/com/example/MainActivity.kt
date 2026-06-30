@@ -115,7 +115,7 @@ fun MainAppScreen() {
 
     // App state tracked from WebView
     var currentUrl by remember { mutableStateOf("https://komiktap.info") }
-    var currentTitle by remember { mutableStateOf("Komiktap - Baca Komik Online") }
+    var currentTitle by remember { mutableStateOf("Manga Reader - Baca Komik Online") }
     var webProgress by remember { mutableStateOf(0) }
     var isWebLoading by remember { mutableStateOf(false) }
     var canGoBack by remember { mutableStateOf(false) }
@@ -162,8 +162,9 @@ fun MainAppScreen() {
                 url?.let { finishedUrl ->
                     currentUrl = finishedUrl
                     isCurrentlyBookmarked = comicPrefs.isBookmarked(finishedUrl)
-                    val title = view?.title ?: "Komiktap"
-                    currentTitle = if (title.contains("komiktap", ignoreCase = true)) title else "$title - Komiktap"
+                    val rawTitle = view?.title ?: "Manga Reader"
+                    val title = rawTitle.replace("komiktap", "Manga Reader", ignoreCase = true)
+                    currentTitle = title
                     
                     // Automatically add loaded chapter/comic to History
                     comicPrefs.addHistory(title, finishedUrl)
@@ -171,6 +172,59 @@ fun MainAppScreen() {
                 }
                 canGoBack = webView.canGoBack()
                 canGoForward = webView.canGoForward()
+
+                // Inject JavaScript to hide/replace website branding
+                val brandingJs = """
+                    (function() {
+                        function replaceText(node) {
+                            if (node.nodeType === Node.TEXT_NODE) {
+                                var val = node.nodeValue;
+                                var newVal = val
+                                    .replace(/komiktap\.info/gi, 'Manga Reader')
+                                    .replace(/komiktap/gi, 'Manga Reader')
+                                    .replace(/bacakomik\.pics/gi, 'Manga Reader')
+                                    .replace(/bacakomik/gi, 'Manga Reader');
+                                if (newVal !== val) {
+                                    node.nodeValue = newVal;
+                                }
+                            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                                if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE' || node.tagName === 'NOSCRIPT' || node.tagName === 'TEXTAREA') {
+                                    return;
+                                }
+                                for (var i = 0; i < node.childNodes.length; i++) {
+                                    replaceText(node.childNodes[i]);
+                                }
+                            }
+                        }
+                        if (document.body) {
+                            replaceText(document.body);
+                            
+                            var imgs = document.getElementsByTagName('img');
+                            for (var i = 0; i < imgs.length; i++) {
+                                var img = imgs[i];
+                                if (img.alt && (img.alt.toLowerCase().indexOf('komiktap') > -1 || img.alt.toLowerCase().indexOf('bacakomik') > -1)) {
+                                    img.alt = 'Manga Reader';
+                                }
+                            }
+                        }
+                        
+                        if (window._brandingObserver) {
+                            window._brandingObserver.disconnect();
+                        }
+                        if (document.body) {
+                            var observer = new MutationObserver(function(mutations) {
+                                mutations.forEach(function(mutation) {
+                                    mutation.addedNodes.forEach(function(node) {
+                                        replaceText(node);
+                                    });
+                                });
+                            });
+                            observer.observe(document.body, { childList: true, subtree: true });
+                            window._brandingObserver = observer;
+                        }
+                    })();
+                """.trimIndent()
+                view?.evaluateJavascript(brandingJs, null)
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -196,11 +250,49 @@ fun MainAppScreen() {
                 if (newProgress == 100) {
                     isWebLoading = false
                 }
+                if (newProgress > 40) {
+                    val brandingJs = """
+                        (function() {
+                            function replaceText(node) {
+                                if (node.nodeType === Node.TEXT_NODE) {
+                                    var val = node.nodeValue;
+                                    var newVal = val
+                                        .replace(/komiktap\.info/gi, 'Manga Reader')
+                                        .replace(/komiktap/gi, 'Manga Reader')
+                                        .replace(/bacakomik\.pics/gi, 'Manga Reader')
+                                        .replace(/bacakomik/gi, 'Manga Reader');
+                                    if (newVal !== val) {
+                                        node.nodeValue = newVal;
+                                    }
+                                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                                    if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE' || node.tagName === 'NOSCRIPT' || node.tagName === 'TEXTAREA') {
+                                        return;
+                                    }
+                                    for (var i = 0; i < node.childNodes.length; i++) {
+                                        replaceText(node.childNodes[i]);
+                                    }
+                                }
+                            }
+                            if (document.body) {
+                                replaceText(document.body);
+                                
+                                var imgs = document.getElementsByTagName('img');
+                                for (var i = 0; i < imgs.length; i++) {
+                                    var img = imgs[i];
+                                    if (img.alt && (img.alt.toLowerCase().indexOf('komiktap') > -1 || img.alt.toLowerCase().indexOf('bacakomik') > -1)) {
+                                        img.alt = 'Manga Reader';
+                                    }
+                                }
+                            }
+                        })();
+                    """.trimIndent()
+                    view?.evaluateJavascript(brandingJs, null)
+                }
             }
 
             override fun onReceivedTitle(view: WebView?, title: String?) {
                 title?.let {
-                    currentTitle = if (it.contains("komiktap", ignoreCase = true)) it else "$it - Komiktap"
+                    currentTitle = it.replace("komiktap", "Manga Reader", ignoreCase = true)
                 }
             }
         }
@@ -436,7 +528,7 @@ fun MainAppScreen() {
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "Menu Navigasi Bacakomik",
+                    text = "Menu Navigasi Browser",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -624,7 +716,7 @@ fun MainAppScreen() {
             },
             text = {
                 Text(
-                    text = "Aplikasi ini memuat situs komiktap.info untuk membaca komik. Agar halaman dapat terbuka dengan lancar, pastikan Anda menggunakan aplikasi VPN yang aktif di ponsel Anda.\n\nTanpa VPN, halaman web mungkin tidak akan bisa terbuka (blank atau error).",
+                    text = "Aplikasi ini memuat halaman web reader untuk membaca komik. Agar halaman dapat terbuka dengan lancar, pastikan Anda menggunakan aplikasi VPN yang aktif di ponsel Anda.\n\nTanpa VPN, halaman web mungkin tidak akan bisa terbuka (blank atau error).",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1170,7 +1262,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Memaksa web komiktap dimuat versi komputer",
+                            text = "Memaksa web dimuat versi komputer",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
@@ -1206,7 +1298,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Muat ulang browser langsung ke halaman awal komiktap.info",
+                            text = "Muat ulang browser langsung ke halaman awal",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
@@ -1266,7 +1358,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Aplikasi ini didesain khusus sebagai browser premium komiktap.info yang menyembunyikan alamat link agar membaca komik lebih lega dan terfokus pada konten.",
+                    text = "Aplikasi ini didesain khusus sebagai browser premium yang menyembunyikan alamat link agar membaca komik lebih lega dan terfokus pada konten.",
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
